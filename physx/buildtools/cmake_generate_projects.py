@@ -12,6 +12,8 @@ def packmanExt():
         return 'cmd'
     return 'sh'
 
+def getWrappedString(str):
+    return f"\"{str}\""
 
 def cmakeExt():
     if sys.platform == 'win32':
@@ -55,10 +57,10 @@ def noPresetProvided():
                 presetList.append(presetXml.get('name') + '.user')
             counter = counter + 1            
     # Fix Python 2.x.
-    try: 
-    	input = raw_input
+    try:
+        input = raw_input
     except NameError: 
-    	pass    
+        pass
     mode = int(input('Enter preset number: '))
     print('Running generate_projects.bat ' + presetList[mode])
     return presetList[mode]
@@ -329,7 +331,7 @@ class CMakePreset:
 
 def getCommonParams():
     outString = '--no-warn-unused-cli'
-    outString = outString + ' -DCMAKE_PREFIX_PATH=\"' + os.environ['PM_PATHS'] + '\"'
+    outString = outString + ' -DCMAKE_PREFIX_PATH=' + os.environ['PM_PATHS']
     outString = outString + ' -DPHYSX_ROOT_DIR=\"' + \
         os.environ['PHYSX_ROOT_DIR'] + '\"'
     outString = outString + ' -DPX_OUTPUT_LIB_DIR=\"' + \
@@ -341,6 +343,8 @@ def getCommonParams():
     return outString
 
 def cleanupCompilerDir(compilerDirName):
+    # compilerDirName = getWrappedString(compilerDirName)
+    # print(compilerDirName)
     if os.path.exists(compilerDirName):
         if sys.platform == 'win32':
             os.system('rmdir /S /Q ' + compilerDirName)
@@ -359,6 +363,7 @@ def presetProvided(pName):
         cmakeExec = os.environ['PM_cmake_PATH'] + '/bin/cmake' + cmakeExt()
     else:
         cmakeExec = 'cmake' + cmakeExt()
+    cmakeExec = getWrappedString(cmakeExec)
     print('Cmake: ' + cmakeExec)
 
     # gather cmake parameters
@@ -366,7 +371,7 @@ def presetProvided(pName):
     cmakeParams = cmakeParams + ' ' + getCommonParams()
     cmakeParams = cmakeParams + ' ' + parsedPreset.getCMakeSwitches()
     cmakeParams = cmakeParams + ' ' + parsedPreset.getCMakeParams()
-    # print(cmakeParams)
+    print(cmakeParams)
 
     if os.path.isfile(os.environ['PHYSX_ROOT_DIR'] + '/compiler/internal/CMakeLists.txt'):
         cmakeMasterDir = 'internal'
@@ -378,10 +383,10 @@ def presetProvided(pName):
         cleanupCompilerDir(outputDir)
 
         # run the cmake script
-        #print('Cmake params:' + cmakeParams)
+        # print('Cmake params:' + cmakeParams)
         os.chdir(os.path.join(os.environ['PHYSX_ROOT_DIR'], outputDir))
-        os.system(cmakeExec + ' \"' +
-                  os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams)
+        print(cmakeExec + " \"" + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + "\"" + cmakeParams)
+        print(os.popen(cmakeExec + " \"" + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + "\"" + cmakeParams).readlines())
         os.chdir(os.environ['PHYSX_ROOT_DIR'])
     else:
         configs = ['debug', 'checked', 'profile', 'release']
@@ -391,23 +396,23 @@ def presetProvided(pName):
             cleanupCompilerDir(outputDir)
 
             # run the cmake script
-            #print('Cmake params:' + cmakeParams)
-            os.chdir(os.path.join(os.environ['PHYSX_ROOT_DIR'], outputDir))
-            # print(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
-            os.system(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' +
-                      cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
-            os.chdir(os.environ['PHYSX_ROOT_DIR'])
+            print('Cmake params:' + cmakeParams)
+            os.chdir(getWrappedString(os.path.join(os.environ['PHYSX_ROOT_DIR'], outputDir)))
+            print(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' + cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config)
+            print(os.popen(cmakeExec + ' \"' + os.environ['PHYSX_ROOT_DIR'] + '/compiler/' +
+                      cmakeMasterDir + '\"' + cmakeParams + ' -DCMAKE_BUILD_TYPE=' + config))
+            os.chdir(getWrappedString(os.environ['PHYSX_ROOT_DIR']))
     pass
 
 
 def main():
     if len(sys.argv) != 2:
-        presetName = noPresetProvided()
         os.chdir(os.environ['PHYSX_ROOT_DIR'])
+        presetName = noPresetProvided()
         if sys.platform == 'win32':
-            os.system('generate_projects.bat ' + presetName)
+            os.system(getWrappedString('generate_projects.bat ' + presetName))
         else:
-            os.system('./generate_projects.sh ' + presetName)
+            os.system(getWrappedString('./generate_projects.sh ' + presetName))
     else:
         presetName = sys.argv[1]
         if filterPreset(presetName):
